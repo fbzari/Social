@@ -2,11 +2,14 @@
 using FluentValidation;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.IdentityModel.Tokens;
 using Social.APi.Dtos;
+using Social.APi.Extensions;
 using Social.APi.Helpers;
 using Social.APi.Models;
 using Social.APi.Repository;
 using Social.APi.Services;
+using System.Security.Claims;
 
 namespace Social.APi.Endpoints
 {
@@ -14,23 +17,16 @@ namespace Social.APi.Endpoints
     {
         public static void MapUserEndpoints(this IEndpointRouteBuilder app)
         {
-            var group = app.MapGroup("/api");
 
-            group.MapPost("/signup", SignUpAsync)
-                .WithName("SignUp")
-                .Produces<ResponseDTO<UserDTO>>(StatusCodes.Status201Created)
-                .Produces<ResponseDTO<object>>(StatusCodes.Status400BadRequest);
+            app.MapPost("/signup", SignUpAsync).WithName("SignUp");
+            app.MapPost("/login", LoginAsync).WithName("Login");
 
-            group.MapPost("/login", LoginAsync)
-                .WithName("Login")
-                .Produces<ResponseDTO<string>>(StatusCodes.Status200OK)
-                .Produces<ResponseDTO<object>>(StatusCodes.Status400BadRequest)
-                .Produces<ResponseDTO<object>>(StatusCodes.Status401Unauthorized);
+            var group = app.MapGroup("/api/users").RequireAuthorization();
 
-            group.MapGet("/users", GetUserProfileAsync)
-                .WithName("AllUsers")
-                .Produces<ResponseDTO<IEnumerable<UserDTO>>>(StatusCodes.Status200OK)
-                .RequireAuthorization();
+            group.MapGet("", GetUserProfileAsync).WithName("AllUsers");
+            group.MapPost("/send-request", SendFriendRequestAsync).WithName("SendFriendRequest");
+            group.MapGet("/view-request", ViewFriendAsync).WithName("ViewFriendRequest");
+
         }
 
         private static async Task<IResult> SignUpAsync(
@@ -45,7 +41,7 @@ namespace Social.APi.Endpoints
 
             if (!validationResult.IsValid) {
 
-                return Results.BadRequest(new ResponseDTO<UserSignUpDTO>
+                return TypedResults.BadRequest(new ResponseDTO<UserSignUpDTO>
                 {
                     IsSuccess = false,
                     StatusCode = StatusCodes.Status400BadRequest,
@@ -56,7 +52,7 @@ namespace Social.APi.Endpoints
 
             if (!await authService.IsEmailUniqueAsync(userSignUpDto.Email)) {
 
-                return Results.BadRequest(new ResponseDTO<UserSignUpDTO>
+                return TypedResults.BadRequest(new ResponseDTO<UserSignUpDTO>
                 {
                     IsSuccess = false,
                     StatusCode = StatusCodes.Status400BadRequest,
@@ -70,7 +66,7 @@ namespace Social.APi.Endpoints
             await authService.CreateUserAsync(user);
             var userDto = mapper.Map<UserDTO>(user);
 
-            return Results.CreatedAtRoute("Login", new ResponseDTO<UserDTO>
+            return TypedResults.CreatedAtRoute("Login", new ResponseDTO<UserDTO>
             {
                 IsSuccess = true,
                 StatusCode = StatusCodes.Status201Created,
@@ -92,7 +88,7 @@ namespace Social.APi.Endpoints
 
             if (!validationResult.IsValid) {
 
-                return Results.BadRequest(new ResponseDTO<UserSignUpDTO>
+                return TypedResults.BadRequest(new ResponseDTO<UserSignUpDTO>
                 {
                     IsSuccess = false,
                     StatusCode = StatusCodes.Status400BadRequest,
@@ -105,7 +101,7 @@ namespace Social.APi.Endpoints
 
             if (user is null || !PasswordHasher.VerifyPassword(userLoginDTO.Password,user.PasswordHash)) {
 
-                return Results.Json(
+                return TypedResults.Json(
                     new ResponseDTO<string>
                     {
                         IsSuccess = false,
@@ -117,7 +113,7 @@ namespace Social.APi.Endpoints
 
             var token = tokenProvider.create(user);
 
-            return Results.Ok(new ResponseDTO<string>
+            return TypedResults.Ok(new ResponseDTO<string>
             {
                 IsSuccess = true,
                 StatusCode = StatusCodes.Status200OK,
@@ -137,7 +133,7 @@ namespace Social.APi.Endpoints
 
             var userDtos = mapper.Map<IEnumerable<UserDTO>>(UserList);
 
-            return Results.Ok(new ResponseDTO<IEnumerable<UserDTO>>
+            return TypedResults.Ok(new ResponseDTO<IEnumerable<UserDTO>>
             {
                 IsSuccess = true,
                 StatusCode = StatusCodes.Status200OK,
@@ -145,5 +141,140 @@ namespace Social.APi.Endpoints
             });
 
         }
+
+        private static async Task<IResult> SendFriendRequestAsync(
+            [FromBody] FriendRequestDto friendRequestDto,
+            IAuthService authService,
+            IFriendRequestRepository friend,
+            IValidator<FriendRequestDto> validator,
+            IMapper mapper,
+            IHttpContextAccessor httpContextAccessor
+            )
+        {
+            #region Vadidate - Edge case
+            var validationResult = await validator.ValidateAsync(friendRequestDto);
+            if (!validationResult.IsValid)
+            {
+                return TypedResults.BadRequest(new ResponseDTO<FriendRequestDto>
+                {
+                    IsSuccess = false,
+                    StatusCode = StatusCodes.Status400BadRequest,
+                    ErrorMessage = string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage))
+                });
+            }
+
+            var senderEmail = Helper.GetSenderEmailFromJwt(httpContextAccessor.HttpContext);
+
+            if (string.IsNullOrEmpty(senderEmail))
+            {
+                return TypedResults.Json(new ResponseDTO<FriendRequestDto>
+                {
+                    IsSuccess = false,
+                    StatusCode = StatusCodes.Status401Unauthorized,
+                    ErrorMessage = "Sender email is empty. I think you are unauthorized"
+                });
+            }
+
+            // Fetch sender and receiver from the database
+            var sender = await authService.GetUserByEmailAsync(senderEmail);
+            var receiver = await authService.GetUserByEmailAsync(friendRequestDto.ReceiverId);
+
+            if (sender is null || receiver is null)
+            {
+                return TypedResults.BadRequest(new ResponseDTO<FriendRequestDto>
+                {
+                    IsSuccess = false,
+                    StatusCode = StatusCodes.Status400BadRequest,
+                    ErrorMessage = "Sender or receiver not found."
+                });
+            }
+
+            if (sender.Email == receiver.Email)
+            {
+                return TypedResults.BadRequest(new ResponseDTO<FriendRequestDto>
+                {
+                    IsSuccess = false,
+                    StatusCode = StatusCodes.Status400BadRequest,
+                    ErrorMessage = "Cannot send a friend request to yourself."
+                });
+            }
+
+
+            var existingRequest = await friend.GetRequestAsync(senderEmail, friendRequestDto.ReceiverId);
+
+            if (existingRequest != null)
+            {
+                return TypedResults.BadRequest(new ResponseDTO<FriendRequestDto>
+                {
+                    IsSuccess = false,
+                    StatusCode = StatusCodes.Status400BadRequest,
+                    ErrorMessage = "A friend request already exists between these users."
+                });
+            }
+
+            #endregion
+
+            var friendRequest = new FriendRequest
+            {
+                SentAt = DateTime.UtcNow,
+                Status = nameof(UserActions.Pending),
+                SenderId = senderEmail,
+                ReceiverId = friendRequestDto.ReceiverId
+            };
+
+            await friend.AddAsync(friendRequest);
+
+            return TypedResults.Ok( new ResponseDTO<string>
+            {
+                IsSuccess = true,
+                StatusCode = StatusCodes.Status200OK,
+                Result = "Friend Request send successfully!!!"
+            });
+
+
+        }
+
+        private static async Task<IResult> ViewFriendAsync(
+            IFriendService friend,
+            IHttpContextAccessor http,
+            IMapper mapper
+            )
+        {
+            var email = Helper.GetSenderEmailFromJwt(http.HttpContext);
+
+            if (string.IsNullOrEmpty(email))
+            {
+
+                return TypedResults.BadRequest(new ResponseDTO<FriendRequestDto>
+                {
+                    IsSuccess = false,
+                    StatusCode = StatusCodes.Status400BadRequest,
+                    ErrorMessage = "There is error while getting user login ID. logout and try again"
+                });
+
+            }
+
+            var frienResponse = await friend.GetFrienrequestAsync(email);
+
+            var result = mapper.Map<IEnumerable<FriendRequestRespondDTO>>(frienResponse);
+
+            if (!result.Any()) {
+
+                return TypedResults.NotFound(new ResponseDTO<string>
+                {
+                    IsSuccess = false,
+                    StatusCode = StatusCodes.Status404NotFound,
+                    ErrorMessage = "You dont have any friend requests"
+                });
+            }
+
+            return TypedResults.Ok(new ResponseDTO<IEnumerable<FriendRequestRespondDTO>>
+            {
+                IsSuccess = true,
+                StatusCode = StatusCodes.Status200OK,
+                Result = result
+            });
+        }
+
     }
 }

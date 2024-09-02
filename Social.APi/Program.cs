@@ -1,5 +1,6 @@
 using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Social.APi.Data;
@@ -22,13 +23,17 @@ builder.Services.AddSwaggerGenWithAuth();
 builder.Services.AddDbContext<SocialApiContext>(option => option.UseSqlServer(builder.Configuration.GetConnectionString("dbconnection")));
 
 builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IFriendRequestRepository, FriendRequestRepository>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IFriendService,FriendService>();
 
 builder.Services.AddAutoMapper(typeof(Program));
 
 builder.Services.AddValidatorsFromAssemblyContaining<UserSignUpValidator>();
 
 builder.Services.AddSingleton<TokenProvider>();
+
+builder.Services.AddHttpContextAccessor();
 
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)

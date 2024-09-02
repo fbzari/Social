@@ -25,6 +25,10 @@ namespace Social.APi.Data
                 .HasKey(u => u.Id);
 
             modelBuilder.Entity<User>()
+                .HasIndex(u => u.Email)
+                .IsUnique(); // Ensure Email is unique
+
+            modelBuilder.Entity<User>()
                 .HasMany(u => u.UserRoles)
                 .WithOne(ur => ur.User)
                 .HasForeignKey(ur => ur.UserId)
@@ -34,12 +38,14 @@ namespace Social.APi.Data
                 .HasMany(u => u.SentFriendRequests)
                 .WithOne(fr => fr.Sender)
                 .HasForeignKey(fr => fr.SenderId)
-                .OnDelete(DeleteBehavior.Restrict); // Prevent cascade delete on SenderId
+                .HasPrincipalKey(u => u.Email)
+                .OnDelete(DeleteBehavior.Restrict); // Restrict delete on SenderId
 
             modelBuilder.Entity<User>()
                 .HasMany(u => u.ReceivedFriendRequests)
                 .WithOne(fr => fr.Receiver)
                 .HasForeignKey(fr => fr.ReceiverId)
+                .HasPrincipalKey(u => u.Email)
                 .OnDelete(DeleteBehavior.Cascade); // Cascade delete for received requests
 
             modelBuilder.Entity<User>()
@@ -82,12 +88,14 @@ namespace Social.APi.Data
                 .HasOne(fr => fr.Sender)
                 .WithMany(u => u.SentFriendRequests)
                 .HasForeignKey(fr => fr.SenderId)
+                .HasPrincipalKey(u => u.Email)
                 .OnDelete(DeleteBehavior.Restrict); // Restrict delete to avoid multiple cascade paths
 
             modelBuilder.Entity<FriendRequest>()
                 .HasOne(fr => fr.Receiver)
                 .WithMany(u => u.ReceivedFriendRequests)
                 .HasForeignKey(fr => fr.ReceiverId)
+                .HasPrincipalKey(u => u.Email)
                 .OnDelete(DeleteBehavior.Cascade); // Cascade delete for received friend requests
 
             modelBuilder.Entity<FriendRequest>()

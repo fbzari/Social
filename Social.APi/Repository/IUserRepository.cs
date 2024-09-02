@@ -10,5 +10,8 @@ namespace Social.APi.Repository
         Task CreateUserAsync(User user);
 
         Task<IEnumerable<User>> GetAllUsers();
+
+        Task<FriendRequest> GetRequestAsync(int senderId, int receiverId);
+        Task AddAsync(FriendRequest friendRequest);
     }
 }
