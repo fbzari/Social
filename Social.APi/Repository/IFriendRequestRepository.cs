@@ -8,5 +8,8 @@ namespace Social.APi.Repository
         Task AddAsync(FriendRequest friendRequest);
 
         Task<IEnumerable<FriendRequest>> GetFrienrequestAsync(string email);
+        Task<IEnumerable<FriendRequest>> GetPendingStatus(string email);
+
+        void RespondToFriend(FriendRequest friendRequest);
     }
 }

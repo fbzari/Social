@@ -3,6 +3,7 @@ using FluentValidation;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
+using Serilog;
 using Social.APi.Dtos;
 using Social.APi.Extensions;
 using Social.APi.Helpers;
@@ -26,6 +27,8 @@ namespace Social.APi.Endpoints
             group.MapGet("", GetUserProfileAsync).WithName("AllUsers");
             group.MapPost("/send-request", SendFriendRequestAsync).WithName("SendFriendRequest");
             group.MapGet("/view-request", ViewFriendAsync).WithName("ViewFriendRequest");
+            group.MapGet("/pending-status", PendingRequestAsync).WithName("PendingStatus");
+            group.MapPut("/respond-friend", RespondRequestAsync).WithName("RespondFriendReq");
 
         }
 
@@ -132,6 +135,8 @@ namespace Social.APi.Endpoints
             var UserList = await authService.GetAllUsers();
 
             var userDtos = mapper.Map<IEnumerable<UserDTO>>(UserList);
+
+            Log.Information("All user list ==> {@userDtos}", userDtos); 
 
             return TypedResults.Ok(new ResponseDTO<IEnumerable<UserDTO>>
             {
@@ -276,5 +281,102 @@ namespace Social.APi.Endpoints
             });
         }
 
+        private static async Task<IResult> PendingRequestAsync(
+            IFriendService friend,
+            IHttpContextAccessor http,
+            IMapper mapper
+            )
+        {
+            var email = Helper.GetSenderEmailFromJwt(http.HttpContext);
+
+            if (string.IsNullOrEmpty(email))
+            {
+
+                return TypedResults.BadRequest(new ResponseDTO<FriendRequestDto>
+                {
+                    IsSuccess = false,
+                    StatusCode = StatusCodes.Status400BadRequest,
+                    ErrorMessage = "There is error while getting user login ID. logout and try again"
+                });
+
+            }
+
+            var PendingFriendRequest = await friend.GetPendingStatus(email);
+
+            var result = mapper.Map<IEnumerable<FriendRequestStatus>>(PendingFriendRequest);
+
+            if (!result.Any())
+            {
+
+                return TypedResults.NotFound(new ResponseDTO<string>
+                {
+                    IsSuccess = false,
+                    StatusCode = StatusCodes.Status404NotFound,
+                    ErrorMessage = "You dont have any Pending requests"
+                });
+            }
+
+            return TypedResults.Ok(new ResponseDTO<IEnumerable<FriendRequestStatus>>
+            {
+                IsSuccess = true,
+                StatusCode = StatusCodes.Status200OK,
+                Result = result
+            });
+
+
+        }
+
+        private static async Task<IResult> RespondRequestAsync(
+            IFriendService friend,
+            IHttpContextAccessor http,
+            IMapper mapper,
+            [FromBody] FriendRespoonseDTO friendResponse,
+            IValidator<FriendRespoonseDTO> validator
+        )
+        {
+            var email = Helper.GetSenderEmailFromJwt(http.HttpContext);
+            if (string.IsNullOrEmpty(email))
+            {
+
+                return TypedResults.BadRequest(new ResponseDTO<FriendRespoonseDTO>
+                {
+                    IsSuccess = false,
+                    StatusCode = StatusCodes.Status400BadRequest,
+                    ErrorMessage = "There is error while getting user login ID. logout and try again"
+                });
+
+            }
+
+            var valresult = await validator.ValidateAsync(friendResponse);
+
+            if (!valresult.IsValid) {
+
+                return TypedResults.BadRequest(new ResponseDTO<FriendRespoonseDTO>
+                {
+                    IsSuccess = false,
+                    StatusCode = StatusCodes.Status400BadRequest,
+                    ErrorMessage = string.Join(", ", valresult.Errors.Select(e => e.ErrorMessage))
+                });
+            }
+
+
+            var friendRequest = new FriendRequest
+            {
+                SenderId = friendResponse.SenderId,
+                Status = Enum.GetName(friendResponse.Status),
+                ReceiverId = email,
+                SentAt = DateTime.Now,
+
+            };
+
+            friend.RespondToFriend(friendRequest);
+
+            return TypedResults.Ok(new ResponseDTO<string>
+            {
+                IsSuccess = true,
+                StatusCode = StatusCodes.Status200OK,
+                Result = $"{friendResponse.SenderId} {Enum.GetName(friendResponse.Status)} Successfully!"
+            });
+        }
     }
 }

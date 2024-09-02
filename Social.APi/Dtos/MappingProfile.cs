@@ -11,6 +11,7 @@ namespace Social.APi.Dtos
             CreateMap<User, UserDTO>().ReverseMap();
             CreateMap<FriendRequestDto, FriendRequest>().ReverseMap();
             CreateMap<FriendRequestRespondDTO, FriendRequest>().ReverseMap();
+            CreateMap<FriendRequestStatus, FriendRequest>().ReverseMap();
 
             CreateMap<UserSignUpDTO, User>()
                 .ForMember(dest => dest.PasswordHash, opt => opt.Ignore()) 
