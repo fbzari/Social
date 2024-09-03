@@ -63,7 +63,7 @@ namespace Social.APi.Repository
             }
             else
             {
-                throw new Exception("Friend request not found.");
+                throw new FriendRequestNotFoundException();
             }
         }
     }

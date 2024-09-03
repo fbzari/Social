@@ -48,14 +48,5 @@ namespace Social.APi.Repository
                                       .ToListAsync();
         }
 
-        public Task<FriendRequest> GetRequestAsync(int senderId, int receiverId)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task AddAsync(FriendRequest friendRequest)
-        {
-            throw new NotImplementedException();
-        }
     }
 }
