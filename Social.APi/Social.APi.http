@@ -1,6 +1,73 @@
-@Social.APi_HostAddress = http://localhost:5266
+### Variables
+@Host = https://localhost:7215
+@token =  eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyIiwiZW1haWwiOiJhcmlkaGVlbmFAZ21haWwuY29tIiwiaHR0cDovL3NjaGVtYXMubWljcm9zb2Z0LmNvbS93cy8yMDA4LzA2L2lkZW50aXR5L2NsYWltcy9yb2xlIjoiQWRtaW4iLCJhdWQiOiJ1c2VycyIsImlzcyI6InNvY2lhbEFwaSIsImV4cCI6MTcyNTM1OTgxNywiaWF0IjoxNzI1MzU2MjE3LCJuYmYiOjE3MjUzNTYyMTd9.n4sQ_DOkVJIgKN7tQhrEk3IJBo5ftqK9TsKe1-wVRK0
+###
 
-GET {{Social.APi_HostAddress}}/weatherforecast/
-Accept: application/json
+### Login
+POST {{Host}}/login
+Content-Type: application/json
+
+{
+  "email": "aridheena@gmail.com",
+  "password": "Ariya@2001"
+}
 
 ###
+
+### Sign up
+POST {{Host}}/signup
+Content-Type: application/json
+
+{
+  "username": "string",
+  "email": "string",
+  "password": "string"
+}
+
+###
+
+### Send friend request
+POST {{Host}}/api/users/send-request
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "receiverId": "string"
+}
+
+###
+
+### Get All Users
+GET {{Host}}/api/users
+Authorization: Bearer {{token}}
+
+###
+
+### View friend request
+GET {{Host}}/api/users/view-friend-request
+Authorization: Bearer {{token}}
+
+###
+
+### Get pending status
+GET {{Host}}/api/users/pending-status
+Authorization: Bearer {{token}}
+
+###
+
+### Respond to friend request
+PUT {{Host}}/api/users/respond-friend
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "senderId": "string",
+  "status": 0
+}
+
+###
+
+### My friend List
+GET {{Host}}/api/users/my-friend
+Authorization: Bearer {{token}}
+

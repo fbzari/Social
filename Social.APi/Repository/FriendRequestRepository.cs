@@ -33,7 +33,7 @@ namespace Social.APi.Repository
 
         public async Task<IEnumerable<FriendRequest>> GetFrienrequestAsync(string email)
         {
-            return await context.FriendRequests.Where(f => f.ReceiverId == email).ToListAsync();
+            return await context.FriendRequests.Where(f => f.ReceiverId == email && f.Status == Enum.GetName(UserActions.Pending)).ToListAsync();
 
         }
 
@@ -63,7 +63,7 @@ namespace Social.APi.Repository
             }
             else
             {
-                throw new Exception("Friend request not found.");
+                throw new FriendRequestNotFoundException();
             }
         }
     }

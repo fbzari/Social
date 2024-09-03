@@ -12,8 +12,8 @@ using Social.APi.Data;
 namespace Social.APi.Migrations
 {
     [DbContext(typeof(SocialApiContext))]
-    [Migration("20240831134335_initial")]
-    partial class initial
+    [Migration("20240903103340_initial-migration")]
+    partial class initialmigration
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -33,11 +33,11 @@ namespace Social.APi.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<int>("ReceiverId")
-                        .HasColumnType("int");
+                    b.Property<string>("ReceiverId")
+                        .HasColumnType("nvarchar(450)");
 
-                    b.Property<int>("SenderId")
-                        .HasColumnType("int");
+                    b.Property<string>("SenderId")
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<DateTime>("SentAt")
                         .HasColumnType("datetime2");
@@ -50,7 +50,8 @@ namespace Social.APi.Migrations
                     b.HasIndex("ReceiverId");
 
                     b.HasIndex("SenderId", "ReceiverId")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("[SenderId] IS NOT NULL AND [ReceiverId] IS NOT NULL");
 
                     b.ToTable("FriendRequests");
                 });
@@ -112,15 +113,25 @@ namespace Social.APi.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<string>("Email")
-                        .HasColumnType("nvarchar(max)");
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<string>("PasswordHash")
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PasswordResetToken")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("PasswordResetTokenExpiry")
+                        .HasColumnType("datetime2");
 
                     b.Property<string>("Username")
                         .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Email")
+                        .IsUnique();
 
                     b.ToTable("Users");
                 });
@@ -153,14 +164,14 @@ namespace Social.APi.Migrations
                     b.HasOne("Social.APi.Models.User", "Receiver")
                         .WithMany("ReceivedFriendRequests")
                         .HasForeignKey("ReceiverId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .HasPrincipalKey("Email")
+                        .OnDelete(DeleteBehavior.Cascade);
 
                     b.HasOne("Social.APi.Models.User", "Sender")
                         .WithMany("SentFriendRequests")
                         .HasForeignKey("SenderId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .HasPrincipalKey("Email")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Receiver");
 

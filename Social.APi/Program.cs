@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
+using Serilog.Filters;
 using Social.APi.Data;
 using Social.APi.Dtos;
 using Social.APi.Endpoints;
@@ -79,7 +80,7 @@ builder.Services.AddRateLimiter(options =>
 
 });
 
-Log.Logger = new LoggerConfiguration().ReadFrom.Configuration(builder.Configuration).CreateLogger();
+Log.Logger = new LoggerConfiguration().ReadFrom.Configuration(builder.Configuration).Filter.ByExcluding(Matching.FromSource("SensitiveSource")).CreateLogger();
 
 builder.Host.UseSerilog();
 
@@ -101,6 +102,8 @@ app.UseRateLimiter();
 app.UseAuthentication();
 
 app.UseAuthorization();
+
+app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 app.MapUserEndpoints();
 
