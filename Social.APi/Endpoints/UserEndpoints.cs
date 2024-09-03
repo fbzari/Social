@@ -5,7 +5,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
 using Social.APi.Dtos;
-using Social.APi.Extensions;
 using Social.APi.Helpers;
 using Social.APi.Models;
 using Social.APi.Repository;
@@ -22,13 +21,14 @@ namespace Social.APi.Endpoints
             app.MapPost("/signup", SignUpAsync).WithName("SignUp");
             app.MapPost("/login", LoginAsync).WithName("Login");
 
-            var group = app.MapGroup("/api/users").RequireAuthorization();
+            var group = app.MapGroup("/api/users").RequireAuthorization("User-Policy");
 
-            group.MapGet("", GetUserProfileAsync).WithName("AllUsers");
+            group.MapGet("", GetUserProfileAsync).WithName("AllUsers").RequireRateLimiting("fixed");
             group.MapPost("/send-request", SendFriendRequestAsync).WithName("SendFriendRequest");
             group.MapGet("/view-request", ViewFriendAsync).WithName("ViewFriendRequest");
             group.MapGet("/pending-status", PendingRequestAsync).WithName("PendingStatus");
             group.MapPut("/respond-friend", RespondRequestAsync).WithName("RespondFriendReq");
+            group.MapGet("/my-friend", GetFriendAsync).WithName("MyFriendList");
 
         }
 
@@ -65,6 +65,8 @@ namespace Social.APi.Endpoints
             
             var user = mapper.Map<User>(userSignUpDto);
             user.PasswordHash = PasswordHasher.Hash(userSignUpDto.Password);
+
+            user.UserRoles.Add(new UserRole { RoleId = 2, User = user });
 
             await authService.CreateUserAsync(user);
             var userDto = mapper.Map<UserDTO>(user);
@@ -116,12 +118,7 @@ namespace Social.APi.Endpoints
 
             var token = tokenProvider.create(user);
 
-            return TypedResults.Ok(new ResponseDTO<string>
-            {
-                IsSuccess = true,
-                StatusCode = StatusCodes.Status200OK,
-                Result = token
-            });
+            return TypedResults.Ok(token);
 
         }
 
@@ -377,6 +374,46 @@ namespace Social.APi.Endpoints
                 StatusCode = StatusCodes.Status200OK,
                 Result = $"{friendResponse.SenderId} {Enum.GetName(friendResponse.Status)} Successfully!"
             });
+        }
+
+        private static async Task<IResult> GetFriendAsync(
+            IFriendService friend,
+            IHttpContextAccessor http,
+            IMapper mapper
+        )
+        {
+            var email = Helper.GetSenderEmailFromJwt(http.HttpContext);
+            if (string.IsNullOrEmpty(email))
+            {
+
+                return TypedResults.BadRequest(new ResponseDTO<FriendRespoonseDTO>
+                {
+                    IsSuccess = false,
+                    StatusCode = StatusCodes.Status400BadRequest,
+                    ErrorMessage = "There is error while getting user login ID. logout and try again"
+                });
+
+            }
+
+            var result = await friend.GetFriendsAsync(email);
+
+            if(result is null || result.Count == 0)
+            {
+                return TypedResults.NotFound(new ResponseDTO<string>
+                {
+                    IsSuccess = false,
+                    StatusCode = StatusCodes.Status404NotFound,
+                    ErrorMessage = "Sorry there is no friend for you ❤️"
+                });
+            }
+            
+            return TypedResults.Ok(new ResponseDTO<List<string>>
+            {
+                IsSuccess = true,
+                StatusCode = StatusCodes.Status200OK,
+                Result = result
+            });
+
         }
     }
 }

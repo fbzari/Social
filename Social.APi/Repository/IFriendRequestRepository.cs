@@ -11,5 +11,7 @@ namespace Social.APi.Repository
         Task<IEnumerable<FriendRequest>> GetPendingStatus(string email);
 
         void RespondToFriend(FriendRequest friendRequest);
+
+        Task<List<string>> GetFriendsAsync(string email);
     }
 }

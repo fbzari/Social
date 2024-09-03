@@ -11,6 +11,12 @@ namespace Social.APi.Services
         {
             this.Repository = Repository;
         }
+
+        public async Task<List<string>> GetFriendsAsync(string email)
+        {
+            return await Repository.GetFriendsAsync(email);
+        }
+
         public async Task<IEnumerable<FriendRequest>> GetFrienrequestAsync(string email)
         {
             return await Repository.GetFrienrequestAsync(email);

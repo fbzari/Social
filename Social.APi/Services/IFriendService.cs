@@ -6,8 +6,7 @@ namespace Social.APi.Services
     {
         Task<IEnumerable<FriendRequest>> GetFrienrequestAsync(string email);
         Task<IEnumerable<FriendRequest>> GetPendingStatus(string email);
-
         void RespondToFriend(FriendRequest friendRequest);
-
+        Task<List<string>> GetFriendsAsync(string email);
     }
 }

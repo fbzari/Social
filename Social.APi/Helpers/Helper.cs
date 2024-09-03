@@ -1,7 +1,7 @@
 ﻿using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 
-namespace Social.APi.Extensions
+namespace Social.APi.Helpers
 {
     public class Helper
     {
@@ -21,7 +21,7 @@ namespace Social.APi.Extensions
             var user = httpContext.User;
             if (user.Identity?.IsAuthenticated == true)
             {
-                var emailClaim = user.FindFirst(ClaimTypes.Name);
+                var emailClaim = user.FindFirst(ClaimTypes.NameIdentifier);
                 return emailClaim?.Value;
             }
             return null;

@@ -20,6 +20,17 @@ namespace Social.APi.Repository
             await context.SaveChangesAsync();
         }
 
+        public async Task<List<string>> GetFriendsAsync(string email)
+        {
+            var friends = await context.FriendRequests
+                            .Where(x => (x.ReceiverId == email || x.SenderId == email) && x.Status == nameof(UserActions.Accepted))
+                            .Select(x => x.ReceiverId == email ? x.SenderId : x.ReceiverId)
+                            .Distinct()
+                            .ToListAsync();
+
+            return friends;
+        }
+
         public async Task<IEnumerable<FriendRequest>> GetFrienrequestAsync(string email)
         {
             return await context.FriendRequests.Where(f => f.ReceiverId == email).ToListAsync();

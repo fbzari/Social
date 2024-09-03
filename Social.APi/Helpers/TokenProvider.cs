@@ -17,15 +17,30 @@ namespace Social.APi.Helpers
 
             var credentials = new SigningCredentials(securitykey, SecurityAlgorithms.HmacSha256);
 
+            var claims = new List<Claim>
+            {
+                new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
+                new Claim(JwtRegisteredClaimNames.Email, user.Email)
+            };
+
+            var roles = user.UserRoles?.Select(ur => ur.Role?.Name).Where(name => name != null).ToList();
+
+            if (roles == null || roles.Count == 0)
+            {
+                claims.Add(new Claim(ClaimTypes.Role, "User"));
+            }
+            else
+            {
+                foreach (var role in roles)
+                {
+                    claims.Add(new Claim(ClaimTypes.Role, role));
+                }
+            }
+
+
             var tokendescriptor = new SecurityTokenDescriptor
             {
-                Subject = new ClaimsIdentity([
-
-                    new Claim(JwtRegisteredClaimNames.Sub,user.Id.ToString()),
-                    new Claim(JwtRegisteredClaimNames.Email,user.Email.ToString()),
-
-
-                ]),
+                Subject = new ClaimsIdentity(claims),
 
                 Expires = DateTime.UtcNow.AddMinutes(configuration.GetValue<int>("Jwt:ExpiryInMinutes")),
                 SigningCredentials = credentials,

@@ -22,6 +22,7 @@ namespace Social.APi.Repository
         public async Task<User> GetUserByEmailAsync(string email)
         {
             return await context.Users.Include(u => u.UserRoles)
+                                        .ThenInclude(ur => ur.Role)
                                       .Include(u => u.SentFriendRequests)
                                       .Include(u => u.ReceivedFriendRequests)
                                       .Include(u => u.Friendships)

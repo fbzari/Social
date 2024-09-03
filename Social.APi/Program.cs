@@ -1,6 +1,7 @@
 using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
@@ -12,7 +13,9 @@ using Social.APi.Helpers;
 using Social.APi.Repository;
 using Social.APi.Services;
 using Social.APi.Validators;
+using System.Security.Claims;
 using System.Text;
+using System.Threading.RateLimiting;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -50,7 +53,31 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("Admin-Policy", policy =>
+    {
+        policy.RequireClaim(claimType: ClaimTypes.Role, "Admin");
+    });
+
+    options.AddPolicy("User-Policy", policy =>
+    {
+        policy.RequireClaim(claimType:ClaimTypes.Role, "User","Admin");
+    });
+});
+
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    options.AddFixedWindowLimiter("fixed", options =>
+    {
+        options.PermitLimit = 3;
+        options.Window = TimeSpan.FromSeconds(60);
+        options.QueueLimit = 0;
+    });
+
+});
 
 Log.Logger = new LoggerConfiguration().ReadFrom.Configuration(builder.Configuration).CreateLogger();
 
@@ -69,10 +96,12 @@ app.UseSerilogRequestLogging();
 
 app.UseHttpsRedirection();
 
-app.MapUserEndpoints();
+app.UseRateLimiter();
 
 app.UseAuthentication();
+
 app.UseAuthorization();
 
+app.MapUserEndpoints();
 
 app.Run();

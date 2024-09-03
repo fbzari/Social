@@ -4,7 +4,6 @@
     {
         public int Id { get; set; } // Primary Key
 
-        // Foreign keys
         public int UserId { get; set; }
         public User User { get; set; }
 
