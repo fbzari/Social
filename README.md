@@ -19,7 +19,7 @@ For those who like to tinker around with APIs using Postman, I’ve got you cove
 
 Get Started with Postman
 Import the Collection: Download and import the Postman collection to get all the API endpoints at your fingertips.
-Set Up Authorization: Don’t forget to grab your JWT token from the /login endpoint and add it to the Authorization header as a Bearer token. [Download Postman Collection](https://website-name.com)
+Set Up Authorization: Don’t forget to grab your JWT token from the /login endpoint and add it to the Authorization header as a Bearer token. [Download Postman Collection](https://drive.google.com/file/d/1eKoiaycjCja0vRkKHtdynHySrgP6Azfo/view?usp=sharing)
 
 ### Explore the Endpoints:
 
