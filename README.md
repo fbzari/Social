@@ -55,5 +55,11 @@ This project is licensed under the [MIT License](LICENSE.txt). See the [LICENSE]
 
 Feel free to reach out if you have any questions, suggestions, or just want to connect!
 
-- **LinkedIn** : [Ariya Nayagan](https://www.linkedin.com/in/ariyanayagan-t)
-- **Email** 📧 : [aridheena@gmail.com](mailto:aridheena@gmail.com) 
+<a href="https://www.linkedin.com/in/ariyanayagan-t">
+      <img alt="Tests Passing" src="https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white" />
+</a>
+<a href="mailto:aridheena@gmail.com">
+      <img alt="Tests Passing" src="https://img.shields.io/badge/Gmail-D14836?style=for-the-badge&logo=gmail&logoColor=white" />
+</a>
+
+
